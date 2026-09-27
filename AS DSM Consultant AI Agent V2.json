@@ -1,0 +1,143 @@
+{
+  "name": "AS DSM Consultant AI Agent V2",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json[\"What is your name?\"] }}, {{ $json['Select the area where you want AI Agents to make the biggest impact'] }}, {{ $json['Briefly describe your current process or challenge in this area'] }}, {{ $json['What outcome would you like AI Agents to achieve for you?'] }}",
+        "options": {
+          "systemMessage": "=You are an AI Business Strategist helping small and medium businesses, students, and MSMEs understand *how AI agents can improve their specific area of work.*\n\nYou will receive input data in JSON format with the following fields:\n{\n  \"area\": \"<marketing/sales/operations/hr/customer_support/finance/others>\",\n  \"department\": \"<optional>\",\n  \"challenge\": \"<text>\",\n  \"desired_outcome\": \"<text>\"\n}\n\nYour task:\n1. Interpret their **business area** and **challenge**.\n2. Identify **3–4 high-impact AI agent ideas** specific to that area.\n3. For each idea, use EXACTLY this format:\n   - **What it automates**: [description]\n   - **Tangible business benefit**: [description]\n4. End with a short summary paragraph titled **\"Next Step\"** that explains how they can start with one quick-win agent and scale later.\n5. Write the entire output as an email-ready message (subject line + body), friendly yet professional in tone, suitable for MSME owners or professionals.\n\nCRITICAL FORMATTING RULES:\n- Each AI agent MUST follow this exact structure:\n  1. **Agent Name**\n     - **What it automates**: [Single clear description of what the agent automates]\n     - **Tangible business benefit**: [Single clear description of the measurable benefit]\n\n- DO NOT use variations like \"What it simplifies\", \"What it automates or simplifies\", \"Role\", or any other field names\n- Use ONLY \"What it automates\" and \"Tangible business benefit\" as the two fields\n- Keep each field on a single line after the dash\n\nAlways sign off with:\nBest regards,\n\nOutput Format - plain text without markdown notations"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "522b52d8-631a-418e-88b0-1ae66b23b2a0",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('On form submission').item.json['Please enter your email address'] }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Consulting Agent Kai"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        816,
+        0
+      ],
+      "id": "58bd23fc-177b-4fb9-9ee9-1f9149a81808",
+      "name": "Send a message",
+      "webhookId": "ec141af6-1982-440a-90f4-3066daf43439",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VMx5uTIPOeTx8YgQ",
+          "name": "Gmail account Ali Siddiqui"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node - Convert AI Agent Email to Beautiful HTML\nconst inputData = $input.all();\nconst emailContent = inputData[0].json.output;\nconst fullText = emailContent;\n\n// Extract subject\nconst subjectMatch = fullText.match(/Subject:\\s*(.+?)[\\n\\r]/);\nconst subject = subjectMatch ? subjectMatch[1].trim() : 'AI Agent Recommendations';\n\n// Extract recipient name\nconst recipientMatch = fullText.match(/Dear\\s+(.+?),/);\nconst recipientName = recipientMatch ? recipientMatch[1].trim() : 'Valued Client';\n\n// Extract AI agents\nconst agents = [];\nlet agentSections = fullText.split(/(?=\\d+\\.\\s+\\*\\*[^*]+?\\*\\*)/);\nif (agentSections.length <= 1) {\n  agentSections = fullText.split(/(?=^-\\s+\\*\\*[^*]+?\\*\\*)/m);\n}\n\nfor (const section of agentSections) {\n  if (!section.match(/^(\\d+\\.|-)\\s+\\*\\*/)) continue;\n  \n  const nameMatch = section.match(/^(?:\\d+\\.|-)\\s+\\*\\*(.+?)\\*\\*/);\n  if (!nameMatch) continue;\n  \n  const name = nameMatch[1].trim();\n  let automation = '';\n  let benefit = '';\n  \n  const autoMatch = section.match(/\\*\\*What it automates\\*\\*:\\s*(.+?)(?=\\n\\s*-\\s*\\*\\*|$)/is);\n  if (autoMatch) automation = autoMatch[1].trim();\n  \n  const benefitMatch = section.match(/\\*\\*Tangible business benefit\\*\\*:\\s*(.+?)(?=\\n\\n|-\\s+\\*\\*|\\d+\\.\\s+\\*\\*|Next Step|$)/is);\n  if (benefitMatch) benefit = benefitMatch[1].trim();\n  \n  if (automation || benefit) {\n    agents.push({ name, automation, benefit });\n  }\n}\n\n// Extract next step\nconst nextStepMatch = fullText.match(/Next Step:\\s*(.+?)(?=\\n\\nBest regards|$)/is);\nconst nextStep = nextStepMatch ? nextStepMatch[1].trim() : '';\n\n// Build agent cards HTML\nlet agentCardsHTML = '';\nfor (let i = 0; i < agents.length; i++) {\n  const agent = agents[i];\n  agentCardsHTML += '<div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\">';\n  agentCardsHTML += '<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>';\n  agentCardsHTML += '<td style=\"vertical-align: middle; width: 48px; padding-right: 16px;\"><div style=\"background: rgba(255,255,255,0.2); border-radius: 50%; width: 48px; height: 48px; text-align: center; line-height: 48px; font-size: 24px; font-weight: bold; color: white;\">' + (i + 1) + '</div></td>';\n  agentCardsHTML += '<td style=\"vertical-align: middle;\"><h3 style=\"margin: 0; color: white; font-size: 22px; font-weight: 600;\">' + agent.name + '</h3></td>';\n  agentCardsHTML += '</tr></table><div style=\"height: 16px;\"></div>';\n  \n  if (agent.automation) {\n    agentCardsHTML += '<div style=\"background: rgba(255,255,255,0.15); border-radius: 8px; padding: 16px; margin-bottom: 12px;\">';\n    agentCardsHTML += '<div style=\"color: rgba(255,255,255,0.9); font-weight: 600; margin-bottom: 6px; font-size: 14px; text-transform: uppercase;\">⚙️ WHAT IT AUTOMATES</div>';\n    agentCardsHTML += '<div style=\"color: white; font-size: 15px; line-height: 1.6;\">' + agent.automation + '</div></div>';\n  }\n  \n  if (agent.benefit) {\n    agentCardsHTML += '<div style=\"background: rgba(255,255,255,0.25); border-radius: 8px; padding: 16px; border-left: 4px solid #fbbf24;\">';\n    agentCardsHTML += '<div style=\"color: white; font-weight: 600; margin-bottom: 6px; font-size: 14px; text-transform: uppercase;\">💎 TANGIBLE BENEFIT</div>';\n    agentCardsHTML += '<div style=\"color: white; font-size: 15px; line-height: 1.6; font-weight: 500;\">' + agent.benefit + '</div></div>';\n  }\n  \n  agentCardsHTML += '</div>';\n}\n\n// Build complete HTML\nconst html = '<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>' + subject + '</title></head>' +\n'<body style=\"margin: 0; padding: 0; font-family: -apple-system, sans-serif; background-color: #f3f4f6;\">' +\n'<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color: #f3f4f6; padding: 40px 20px;\"><tr><td align=\"center\">' +\n'<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"background-color: white; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1);\">' +\n'<tr><td style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;\">' +\n'<h1 style=\"margin: 0; color: white; font-size: 28px; font-weight: 700;\">' + subject + '</h1>' +\n'<p style=\"margin: 10px 0 0 0; color: rgba(255,255,255,0.9); font-size: 16px;\">Transforming Your Business with Intelligent Automation</p></td></tr>' +\n'<tr><td style=\"padding: 30px 30px 20px 30px;\"><p style=\"margin: 0 0 10px 0; color: #1f2937; font-size: 16px;\">Dear <strong>' + recipientName + '</strong>,</p>' +\n'<p style=\"margin: 0; color: #4b5563; font-size: 15px;\">I hope this message finds you well!</p></td></tr>' +\n'<tr><td style=\"padding: 0 30px 30px 30px;\"><p style=\"margin: 0; color: #4b5563; font-size: 15px; line-height: 1.7;\">Based on the information I received, here are some focused AI agent ideas.</p></td></tr>' +\n'<tr><td style=\"padding: 0 30px;\">' + agentCardsHTML + '</td></tr>' +\n(nextStep ? '<tr><td style=\"padding: 30px; background-color: #fef3c7; border-top: 3px solid #fbbf24;\"><h3 style=\"margin: 0 0 16px 0; color: #92400e; font-size: 20px;\">🚀 Next Step</h3><p style=\"margin: 0; color: #78350f; font-size: 15px;\">' + nextStep + '</p></td></tr>' : '') +\n'<tr><td style=\"padding: 30px;\"><p style=\"margin: 0 0 20px 0; color: #4b5563; font-size: 15px;\">Looking forward to hearing your thoughts!</p>' +\n'<p style=\"margin: 0 0 8px 0; color: #1f2937; font-size: 15px; font-weight: 600;\">Best regards,</p>' +\n'<p style=\"margin: 0; color: #667eea; font-size: 16px; font-weight: 700;\">Consulting Agent KAI</p></td></tr>' +\n'<tr><td style=\"background-color: #f9fafb; padding: 20px 30px; text-align: center;\"><p style=\"margin: 0; color: #9ca3af; font-size: 13px;\">This email was sent by your AI Consulting Agent.</p></td></tr>' +\n'</table></td></tr></table></body></html>';\n\nreturn [{ json: { subject: subject, html: html, recipient: recipientName, agentCount: agents.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "id": "d7f20c96-9762-48f3-bb43-57704a8882eb",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        80,
+        208
+      ],
+      "id": "d6f28642-4cd1-4bdc-8cf7-651076ce824c",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GoWq98iSJnh7bIWs",
+          "name": "AS DSM Public Google Gemini(PaLM) Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Discover Where AI Agents Can Help Your Business",
+        "formDescription": "Fill this form to know how can AI Agents help you",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e693b324-3908-41ab-97fb-b3d35cd3504c",
+      "name": "On form submission",
+      "webhookId": "224bb7b2-1c83-40c7-8e0d-8f55b6fbda04"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d74ed9ff-aa0e-4875-9ae2-8e381c654f33",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a39925a189fc4958777cfbc2ee952f96a625e56b8dde120f89d58a7cdacf694a"
+  },
+  "id": "cd64vbW5mARKWirv",
+  "tags": []
+}

@@ -1,0 +1,702 @@
+{
+  "name": "Elite LinkedIn Gemini Content Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "179a344b-93ce-4e4b-ac11-428092342003",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nstaticData.processedUrls = staticData.processedUrls || [];\n\nconst items = $input.all();\nlet selectedItem = null;\n\n// Find the first article we haven't processed yet\nfor (const item of items) {\n  const url = item.json.link;\n  if (!staticData.processedUrls.includes(url)) {\n    selectedItem = item;\n    break;\n  }\n}\n\nif (!selectedItem) {\n  return []; // Stop execution if no new news\n}\n\nreturn [selectedItem];"
+      },
+      "id": "952c0676-1bdf-43f1-9993-eb1e3682e6ef",
+      "name": "Deduplicate & Pick One",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://r.jina.ai/{{ $json.link }}",
+        "options": {}
+      },
+      "id": "989d88d0-ade2-4e49-91f2-1d7d0d2c2d46",
+      "name": "Deep Scrape Full Article",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1296,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.data }}",
+        "options": {
+          "systemMessage": "You are a top 1% LinkedIn content strategist.\nYour job is to create HIGH-PERFORMING posts based on a news article.\n\nSTRICT RULES:\n- No emojis\n- No em dashes\n- Hooks must be under 12 words\n- Hooks must create curiosity, not explain\n- Post must be short, sharp, and insight-driven\n- No fluff, no storytelling filler\n- Max 120 words\n- Never invent a link or image URL — only use what is provided in the ARTICLE section below\n- If no image URL is provided, return \"image\": null\n\nPROCESS:\n1) Extract the core insight from the article\n2) Score it (1-10)\n3) If score < 7 → return score only (link and image as null)\n4) If score >= 7:\n   - Generate 3 hooks\n   - Write the post\n   - Attach the article link and image URL exactly as given\n\nOUTPUT FORMAT (STRICT JSON ONLY, NO TEXT OUTSIDE):\n{\n  \"score\": number,\n  \"hooks\": [\"short hook 1\", \"short hook 2\", \"short hook 3\"],\n  \"post\": \"clean LinkedIn post\",\n  \"image\": \"image url or null\"\n}\n\nARTICLE:\nTitle: {{ $json[\"title\"] }}\nContent: {{ $json[\"content\"] }}\nURL: {{ $json[\"url\"] }}\nImage: {{ $json[\"urlToImage\"] }}"
+        }
+      },
+      "id": "47feacbe-dbfe-4a9c-904a-5a8c29cd570d",
+      "name": "AI Content Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1904,
+        -288
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3-flash-preview",
+        "options": {}
+      },
+      "id": "01118318-5d9a-44f2-81f9-8bf716bbef49",
+      "name": "Google Gemini Brain",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1888,
+        -80
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "8tdvCuFILVPGTmsv",
+          "name": "AS DSM Google Gemini"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "person": "larOQJjAFl",
+        "text": "={{ $json.post }}",
+        "shareMediaCategory": "IMAGE",
+        "additionalFields": {}
+      },
+      "id": "7eb076fd-57b5-49ba-8ee1-4c0f10f8eb92",
+      "name": "Post to LinkedIn",
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [
+        4064,
+        -304
+      ],
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "zjWC3F1FydAZAh2U",
+          "name": "AS DSM LinkedIn account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://venturebeat.com/category/ai/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        1072,
+        -624
+      ],
+      "id": "9d3270d1-aeff-4090-99a6-1e59db49ebc2",
+      "name": "RSS Read"
+    },
+    {
+      "parameters": {
+        "url": "https://rss.beehiiv.com/feeds/2R3C6Bt5wj.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        928,
+        -288
+      ],
+      "id": "a3c46779-beba-4099-af1a-02d473bb311a",
+      "name": "Rundown AI feed"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "40453924-3148-47b9-b275-0f0a7655822f",
+              "leftValue": "={{ $json.score || 0 }}",
+              "rightValue": 7,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2464,
+        -288
+      ],
+      "id": "bb89b3b9-3a4b-4d4b-af44-8e24e757955a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "url": "=https://image.pollinations.ai/prompt/{{encodeURIComponent(\"minimal AI concept, black background, glowing neural network, clean typography, modern tech aesthetic\")}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3200,
+        -304
+      ],
+      "id": "e78b7fb5-df02-4236-88ee-b00f0d300c25",
+      "name": "Generate Image"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.output || $json.text || $json.post || '';\n\nconst cleaned = raw\n  .replace(/\\\\\\\\n/g, '\\n')\n  .replace(/\\\\n/g, '\\n')\n  .replace(/\\n{3,}/g, '\\n\\n')\n  .trim();\n\nconst link = $('If').item.json.link;\nconst post = `${cleaned}\\n\\n${link}`;\n\nreturn [{\n  json: {\n    post,\n    link,\n    image: $('If').item.json.image\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3024,
+        -304
+      ],
+      "id": "aca7102f-4b24-476b-a10f-3bd94277a736",
+      "name": "Format Post"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      ...$json,\n      image_url: $json.image\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3408,
+        -304
+      ],
+      "id": "c990fa28-762c-4843-8297-d9bed5c70653",
+      "name": "Attach Image URL"
+    },
+    {
+      "parameters": {
+        "options": {
+          "timezone": "Asia/Riyadh"
+        }
+      },
+      "type": "n8n-nodes-base.dateTimeTool",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        -64
+      ],
+      "id": "4ee456da-e405-417f-ad0d-fc6dba178324",
+      "name": "Date & Time"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Hook:\n{{ $json[\"hooks\"][0] }}\n\nPost:\n{{ $json[\"post\"] }}",
+        "options": {
+          "systemMessage": "Rewrite this into a HIGH-PERFORMANCE LinkedIn post.\n\nIMPORTANT: Do not use \\n for line breaks. Use actual line breaks in your response only.\n\nRules:\n- First 2 lines must create curiosity\n- No long sentences\n- Break into short paragraphs\n- Remove fluff\n- Make it punchy and bold\n- Keep under 100 words\n- Tone: slightly contrarian and bold\n\nReturn ONLY the final post text. Do not include labels like \"Hook:\" or \"Post:\" in your output."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2720,
+        -304
+      ],
+      "id": "d86057fd-404c-4147-a643-0671c213929c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2768,
+        -64
+      ],
+      "id": "8256977c-5866-4fbf-b2b1-6d62d1cd856b",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "HmCHwzRkmP08gwVD",
+          "name": "Google Gemini(PaLM) Api n8nproject"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.output || \"\";\nconst cleaned = raw\n  .replace(/^json\\s*/i, \"\")\n  .replace(/```json|```/g, \"\")\n  .trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  parsed = { score: 0, hooks: [], post: raw };\n}\nreturn [{\n  json: {\n    ...$json,\n    ...parsed,\n    link: $('OG Image').item.json.link,\n    image: $('OG Image').item.json.image\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        -288
+      ],
+      "id": "85491581-ac96-4f1b-a0d8-be286f536479",
+      "name": "Parse AI Output"
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ $now.hour % 2 === 0 ? 0 : 1 }}"
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        784,
+        -624
+      ],
+      "id": "587cef46-b7a4-4e26-965f-9ee85ed736c9",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "286e9ee4-cbd4-45cf-b80a-b5424d432f69",
+              "name": "failed_article_title:",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "ba97dc59-bdbe-4729-a385-2a0d7ef05ed0",
+              "name": "failed_article_url:",
+              "value": "={{ $json.url || $json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "b43ba3ef-d3a2-468f-a918-5f3eb021b0e5",
+              "name": "failed_at:",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "cde75e47-3b9e-42e8-8e90-958d07db8a3e",
+              "name": "Reason",
+              "value": "AI parse failed or content empty",
+              "type": "string"
+            },
+            {
+              "id": "9c8e4df3-08b8-45dd-b141-4235c3d1ba7c",
+              "name": "source:",
+              "value": "={{ $json.feed || \"unknown\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2480,
+        -48
+      ],
+      "id": "ded36adb-9b68-47fe-b00a-769e5c5075d0",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "sendTo": "ali.zuhayr@gmail.com",
+        "subject": "n8n LinkedIn Bot — Article Failed",
+        "message": "=  Title: {{ $json.failed_article_title }}   URL:   {{ $json.failed_article_url }}   Time:  {{ $json.failed_at }}   Reason: {{ $json.reason }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2704,
+        128
+      ],
+      "id": "31936c8f-4aa5-4634-bb7f-a42745762057",
+      "name": "Send a message",
+      "webhookId": "52ebf787-3275-406d-91dc-f18fc53a81ee",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mqa7Jzo4WzpZBkzb",
+          "name": "AS DSM Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $json.data;\n\nconst urlMatch = text.match(/URL Source:\\s*(\\S+)/);\nconst link = urlMatch ? urlMatch[1] : $('Deduplicate & Pick One').item.json.link;\n\nconst imgMatch = text.match(/!\\[Image 1\\]\\((.*?)\\)/);\nconst image = imgMatch ? imgMatch[1] : null;\n\nreturn {\n  json: {\n    data: text,\n    link,\n    image\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        -288
+      ],
+      "id": "53397800-1dc7-4864-8ef2-c9688d768f4f",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3632,
+        -304
+      ],
+      "id": "dd21f8bd-0397-466e-97e5-a5b74b5d720d",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    post: $('Attach Image URL').item.json.post,\n    link: $('Attach Image URL').item.json.link\n  },\n  binary: $input.item.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3856,
+        -304
+      ],
+      "id": "3dad203b-8f8f-414e-afc7-5642fd801f6e",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1680,
+        -288
+      ],
+      "id": "1503c967-7b8c-491c-a518-46727c9cc9e3",
+      "name": "Fetch Raw HTML for OG Image"
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $json.data || '';\n\n// Try the real og:image meta tag first\nconst ogMatch = html.match(/<meta[^>]+property=[\"']og:image[\"'][^>]+content=[\"']([^\"']+)[\"']/i);\nlet image = ogMatch ? ogMatch[1] : null;\n\n// Some sites reverse attribute order (content before property)\nif (!image) {\n  const ogMatchAlt = html.match(/<meta[^>]+content=[\"']([^\"']+)[\"'][^>]+property=[\"']og:image[\"']/i);\n  image = ogMatchAlt ? ogMatchAlt[1] : null;\n}\n\n// Fallback to whatever the earlier Jina-based extraction found\nif (!image) {\n  image = $('Code in JavaScript').item.json.image || null;\n}\n\nreturn [{\n  json: {\n    ...$('Code in JavaScript').item.json,\n    image\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        -512
+      ],
+      "id": "4a6fae77-6100-4de6-b5a5-7e1ac600a0b3",
+      "name": "OG Image"
+    }
+  ],
+  "pinData": {
+    "Edit Fields": [
+      {
+        "json": {
+          "title": "Test Failed Article",
+          "url": "https://example.com/article",
+          "feed": "RSS Read"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Deduplicate & Pick One": {
+      "main": [
+        [
+          {
+            "node": "Deep Scrape Full Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deep Scrape Full Article": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Content Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to LinkedIn": {
+      "main": [
+        []
+      ]
+    },
+    "Google Gemini Brain": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Content Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Rundown AI feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        []
+      ]
+    },
+    "Rundown AI feed": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate & Pick One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Image": {
+      "main": [
+        [
+          {
+            "node": "Attach Image URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Post": {
+      "main": [
+        [
+          {
+            "node": "Generate Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Image URL": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Content Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [],
+        []
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Fetch Raw HTML for OG Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Post to LinkedIn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Raw HTML for OG Image": {
+      "main": [
+        [
+          {
+            "node": "OG Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OG Image": {
+      "main": [
+        [
+          {
+            "node": "AI Content Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "bf4afa57-c432-495f-98a7-c7f02b240dfa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "966c9717c649ff58138114ad4ec0792ba6c6dbbaefbc75a95d7e5ed34f041958"
+  },
+  "nodeGroups": [],
+  "id": "rZ6G2CjzNVP55C9Q",
+  "tags": []
+}

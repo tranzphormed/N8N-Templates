@@ -1,0 +1,406 @@
+{
+  "name": "Crypto Analysis Complete",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "options": {}
+      },
+      "id": "6236f6b2-0c8b-4d5c-9ecd-2b99b70ae9e2",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -80
+      ],
+      "webhookId": "0e970d70-0975-43fb-8c3e-78bce2111190"
+    },
+    {
+      "parameters": {
+        "url": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
+        "options": {}
+      },
+      "id": "06bdbc05-f4d8-487a-9dc1-05bffda7d0ad",
+      "name": "Fetching the details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        160,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      context: $input.all()[0].json,\n      query: $('When chat message received').first().json.chatInput\n    }\n  }\n];"
+      },
+      "id": "d7271cbd-a904-44dc-b9f7-225be310b4dd",
+      "name": "Code",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "### ROLE\nYou are a Senior Crypto Investment Strategist. Your goal is to provide a comprehensive investment analysis based on user queries. You do not do the deep research yourself; instead, you manage a team of specialized analysts (Tools).\n\n### INSTRUCTIONS\n1. **Analyze the Request:** Determine if the user is asking about a specific token, market trend, or investment opportunity.\n2. **Delegate Tasks:**\n   - If the user needs to know about the project's team, utility, news, or long-term viability, call the `Fundamental Analysis` tool.\n   - If the user needs to know about price action, entry/exit points, or chart patterns, call the `Technical Analysis` tool.\n   - If a comprehensive report is needed, call **BOTH** tools.\n3. **Synthesize:** Once you receive the outputs from your tools, combine them into a single, cohesive narrative. Do not just copy-paste; weave the fundamental and technical data together.\n\n### OUTPUT FORMAT\nPresent your final response in clear Markdown:\n- **Executive Summary:** A 2-sentence verdict (Bullish/Bearish/Neutral).\n- **Fundamental Insights:** Key takeaways from the fundamental analysis.\n- **Technical Outlook:** Key levels and trends from the technical analysis.\n- **Risk Warning:** A standard disclaimer that this is not financial advice."
+        }
+      },
+      "id": "e60f2ec2-9453-4aa5-b394-23f90a468483",
+      "name": "Crypto Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [
+        656,
+        -80
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "0fe8c0ae-a936-46ed-8b00-acbb0055b3df",
+      "name": "Calculator",
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        528,
+        128
+      ],
+      "id": "e0a646c4-26b7-446e-b39d-df7c22063d16",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "8tdvCuFILVPGTmsv",
+          "name": "AS DSM Google Gemini"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "You are a helpf### ROLE\nYou are a Fundamental Crypto Analyst. You focus on value, utility, and market sentiment. You ignore chart patterns and price fluctuations.\n\n### TASKS\n1. **News & Sentiment:** Use the `Perplexity` tool to search for the latest news, partnerships, hacks, or regulatory updates regarding the requested token.\n2. **Tokenomics & Data:** Use the `HTTP Request` tool to fetch current market cap, circulating supply, and volume data.\n3. **Project Viability:** Assess the whitepaper promises vs. actual delivery.\n\n### CONSTRAINTS\n- Focus on the *long-term* horizon (months/years).\n- Be critical. Look for red flags (e.g., unlocked tokens, anonymous team).\n\n### OUTPUT FORMAT\nReturn your analysis in this JSON structure (so the Main Agent can parse it easily):\n{\n  \"project_name\": \"String\",\n  \"sentiment_score\": \"Positive/Negative/Neutral\",\n  \"key_catalysts\": [\"List of upcoming events or news\"],\n  \"red_flags\": [\"List of risks\"],\n  \"long_term_verdict\": \"String summary\"\n}ul assistant"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        128
+      ],
+      "id": "7e55b662-ee69-4439-9a48-7d9d99554bee",
+      "name": "Fundamental Analysis"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        688,
+        336
+      ],
+      "id": "e3c5e14a-0903-47c1-b825-3165106ce01d",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "8tdvCuFILVPGTmsv",
+          "name": "AS DSM Google Gemini"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "messages": {
+          "message": [
+            {
+              "content": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message0_Text', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.perplexityTool",
+      "typeVersion": 1,
+      "position": [
+        880,
+        336
+      ],
+      "id": "27dd0554-3fa6-4080-836a-4a4f79e109df",
+      "name": "Message a model in Perplexity2",
+      "credentials": {
+        "perplexityApi": {
+          "id": "9Zy9LlwmKuxJMxuD",
+          "name": "AS DSM Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        1040,
+        352
+      ],
+      "id": "a21dd3ed-34f6-44e6-a7de-2072bf88a02a",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "You are a help### ROLE\nYou are a Technical Analysis (TA) Expert. You focus purely on price action, volume, and statistical probability. You do not care about the \"story\" behind the coin.\n\n### TASKS\n1. **Market Data:** Use the `HTTP Request` tool to get the latest candle data (Open, High, Low, Close).\n2. **Indicator Analysis:** Use the `Perplexity` tool to find current readings for RSI, MACD, and Moving Averages if you cannot calculate them directly.\n3. **Math Verification:** Use the `Calculator` tool to calculate exact percentage distances to Support and Resistance levels or to calculate Risk/Reward ratios.\n\n### CONSTRAINTS\n- Focus on the *short-to-medium* term horizon (days/weeks).\n- Identify specific price targets.\n\n### OUTPUT FORMAT\nReturn your analysis in this JSON structure:\n{\n  \"current_price\": \"Number\",\n  \"trend\": \"Uptrend/Downtrend/Consolidation\",\n  \"support_levels\": [\"Price 1\", \"Price 2\"],\n  \"resistance_levels\": [\"Price 1\", \"Price 2\"],\n  \"indicators\": \"Summary of RSI/MACD status\",\n  \"trade_setup\": \"Suggested Entry and Stop Loss\"\n}ful assistant"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 2.2,
+      "position": [
+        1264,
+        128
+      ],
+      "id": "2fce7217-18c6-4ed6-a4e7-096dd5826310",
+      "name": "Technical Analysis"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        336
+      ],
+      "id": "2696dc94-8bcd-4789-abe1-96d3d88d0fe7",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "8tdvCuFILVPGTmsv",
+          "name": "AS DSM Google Gemini"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "messages": {
+          "message": [
+            {
+              "content": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message0_Text', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.perplexityTool",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        352
+      ],
+      "id": "e1e05430-ed86-4b6b-8545-0432fc9a9898",
+      "name": "Message a model in Perplexity",
+      "credentials": {
+        "perplexityApi": {
+          "id": "9Zy9LlwmKuxJMxuD",
+          "name": "AS DSM Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        1664,
+        368
+      ],
+      "id": "10edb787-c996-4eb9-94cb-b6b05c2eb43a",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Fetching the details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetching the details": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Crypto Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Crypto Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fundamental Analysis": {
+      "ai_tool": [
+        [
+          {
+            "node": "Crypto Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Fundamental Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model in Perplexity2": {
+      "ai_tool": [
+        [
+          {
+            "node": "Fundamental Analysis",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "ai_tool": [
+        [
+          {
+            "node": "Fundamental Analysis",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Technical Analysis": {
+      "ai_tool": [
+        [
+          {
+            "node": "Crypto Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Technical Analysis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model in Perplexity": {
+      "ai_tool": [
+        [
+          {
+            "node": "Technical Analysis",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "Technical Analysis",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "Technical Analysis",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3999e8c6-577d-419f-bb87-5de5ecad8304",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "966c9717c649ff58138114ad4ec0792ba6c6dbbaefbc75a95d7e5ed34f041958"
+  },
+  "nodeGroups": [],
+  "id": "ukUN26RraV85TflK",
+  "tags": []
+}

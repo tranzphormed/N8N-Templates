@@ -1,0 +1,295 @@
+{
+  "name": "Crypto Analysis Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "crypto-agent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Chat Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        96
+      ],
+      "id": "8e029850-6c2e-4fe6-b87e-241c3c30ba88",
+      "webhookId": "8f821b95-7776-4b74-9a03-1e37f80ec11b"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.body.asset || 'BTC'}}",
+        "options": {}
+      },
+      "name": "Fetching Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        96
+      ],
+      "id": "ac3b4a82-f7d1-4ed2-b08d-4827c316b10f"
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { asset: $json.body.asset || 'BTC', intent: $json.body.intent || 'analysis' }}];"
+      },
+      "name": "Code",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -176,
+        96
+      ],
+      "id": "865668a6-d4d3-437a-a429-db13ec86e4ea"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "prompt": "You are a crypto analysis router. Decide whether to run fundamental analysis, technical analysis, or both for asset {{$json.asset}}. Respond in JSON with keys: fundamental (true/false), technical (true/false).",
+        "options": {},
+        "requestOptions": {}
+      },
+      "name": "Crypto Agent",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        32,
+        96
+      ],
+      "id": "4d1f80c0-2387-4f34-bc03-9aa83cda6274"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "prompt": "Perform FUNDAMENTAL analysis for {{$json.asset}}. Consider news, tokenomics, adoption, macro signals.",
+        "options": {},
+        "requestOptions": {}
+      },
+      "name": "Fundamental Analysis (LLM)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -64
+      ],
+      "id": "aa7dc105-70f3-42c9-aa03-64832ba5715a"
+    },
+    {
+      "parameters": {
+        "url": "https://api.example.com/fundamentals",
+        "options": {}
+      },
+      "name": "Fundamental Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -64
+      ],
+      "id": "30098667-0b31-49bd-a58e-29366cc9048f"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "prompt": "Perform TECHNICAL analysis for {{$json.asset}}. Use RSI, MACD, trend, support/resistance.",
+        "options": {},
+        "requestOptions": {}
+      },
+      "name": "Technical Analysis (LLM)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [
+        224,
+        240
+      ],
+      "id": "84d8e432-8375-47db-847a-c7484d25fd10"
+    },
+    {
+      "parameters": {
+        "url": "https://api.example.com/ohlcv",
+        "options": {}
+      },
+      "name": "Market Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        432,
+        240
+      ],
+      "id": "bebea226-a903-422c-88a8-23ada1b9a1d0"
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: { indicatorSummary: 'RSI neutral, MACD bullish crossover' }}];"
+      },
+      "name": "Calculator",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        624,
+        240
+      ],
+      "id": "db24a90c-2a40-4a62-85a0-1889cb2816cd"
+    },
+    {
+      "parameters": {
+        "mode": "mergeByPosition"
+      },
+      "name": "Merge Analysis",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        832,
+        96
+      ],
+      "id": "efeeef01-b2be-4bba-80d4-559ad0db88ab"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        96
+      ],
+      "id": "00a9a3a8-8d01-4d36-ab24-74cb5bd57ad7"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetching Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetching Details": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Crypto Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto Agent": {
+      "main": [
+        [
+          {
+            "node": "Fundamental Analysis (LLM)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Technical Analysis (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fundamental Analysis (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Fundamental Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Technical Analysis (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Market Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Market Data": {
+      "main": [
+        [
+          {
+            "node": "Calculator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fundamental Data": {
+      "main": [
+        [
+          {
+            "node": "Merge Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "main": [
+        [
+          {
+            "node": "Merge Analysis",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Analysis": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "ccfea962-b843-4f61-b9a8-84c24f8b01e9",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "966c9717c649ff58138114ad4ec0792ba6c6dbbaefbc75a95d7e5ed34f041958"
+  },
+  "nodeGroups": [],
+  "id": "xAzkZnuu2Soii2qe",
+  "tags": []
+}

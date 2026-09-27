@@ -1,0 +1,481 @@
+{
+  "name": "AS LinkedIn Content+Image+human approval (Chat)",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c58328d1-cbbf-4c8a-8eca-bd0aa41c397e",
+      "name": "When chat message received",
+      "webhookId": "a8bd2fa9-bf41-4c2d-a00b-cd7b16d4fc89"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        80,
+        208
+      ],
+      "id": "1d80dcf0-94e1-4245-8b93-bce857694724",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GoWq98iSJnh7bIWs",
+          "name": "AS DSM Public Google Gemini(PaLM) Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// *** IMPORTANT: ***\n// Replace 'content' below if your AI output field is named differently (e.g., 'text')\nconst aiResponseString = $input.item.json.output;\n\n// Parse the string into a real JSON object\nreturn JSON.parse(aiResponseString);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        0
+      ],
+      "id": "1318c0ce-5fd5-4272-a473-b999e409f599",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "candidates[0].content.parts[1].inlineData.data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1168,
+        -144
+      ],
+      "id": "4da495de-1bf7-47b4-bbb3-485daf5c7f4d",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "content": "## System 1",
+        "height": 480,
+        "width": 832
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -80
+      ],
+      "id": "a181e130-62a2-47cc-b6c2-8fc8307f1d4c",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "ali.zuhayr@gmail.com",
+        "subject": "Approval for LinkedIn Post",
+        "message": "=Input Idea:\n{{ $('When chat message received').item.json.chatInput }}\n----------\nAI Generated Post:\n{{ $json.post }}\n\n\n\n\n\n",
+        "responseType": "customForm",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Confirm  Content?",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Yes"
+                  },
+                  {
+                    "option": "No"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Any Changes?",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1392,
+        -144
+      ],
+      "id": "bcada48d-589b-4537-babc-9312e1b284e6",
+      "name": "Send message and wait for response",
+      "webhookId": "338afda2-b82d-4820-b326-ef07d3cde748",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VMx5uTIPOeTx8YgQ",
+          "name": "Gmail account Ali Siddiqui"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.data['Confirm  Content?'] }}",
+                    "rightValue": "Yes",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8385fc14-e3a8-4e8a-8645-e91225e2a167"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Yes"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b43e01d7-bcaa-49e3-bd37-eb79605dd5db",
+                    "leftValue": "={{ $json.data['Confirm  Content?'] }}",
+                    "rightValue": "No",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        960,
+        80
+      ],
+      "id": "114c5620-7603-4d9d-890f-e8fbd920dbe4",
+      "name": "Confirmation Logic"
+    },
+    {
+      "parameters": {
+        "content": "## System 2",
+        "height": 464,
+        "width": 720,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        832,
+        -224
+      ],
+      "id": "5c640eab-5e46-4a7e-bc9e-1ce8af359735",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "person": "larOQJjAFl",
+        "text": "={{ $('Code in JavaScript').item.json.post }}",
+        "shareMediaCategory": "IMAGE",
+        "binaryPropertyName": "={{ $('Convert to File').item.binary.data }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        64
+      ],
+      "id": "f7213230-b499-4819-b985-64bc8666d51a",
+      "name": "Create a post",
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "Zzgm1f3YUEX8DZRz",
+          "name": "AS- Linkedin API - Nov2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        880,
+        624
+      ],
+      "id": "bcae0a3a-745a-4fb1-8b37-94a4d6c3d79b",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GoWq98iSJnh7bIWs",
+          "name": "AS DSM Public Google Gemini(PaLM) Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "person": "larOQJjAFl",
+        "text": "={{ $json.output }}",
+        "shareMediaCategory": "IMAGE",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.linkedIn",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        448
+      ],
+      "id": "e9dbec3e-fa12-418d-853b-990edf0d5f66",
+      "name": "Create a post1",
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "Zzgm1f3YUEX8DZRz",
+          "name": "AS- Linkedin API - Nov2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## System 3\n",
+        "height": 400,
+        "width": 752,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        832,
+        352
+      ],
+      "id": "3ee07e40-0211-47b7-85b2-36b8ea5cecd5",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an expert LinkedIn content writer. You will be given a topic, and your task is to create an engaging LinkedIn post that relates to that topic.\n\nYour post should:\n1. Begin with a compelling hook related to the topic\n2. Then write an \"Agitate\" line to highlight the problem\n3. Write short one-liners, easy to read and grasp\n4. End it with a Call to Action that compels readers to comment\n5. Use appropriate emojis as needed\n\nCRITICAL: You must also create a separate, 1-2 sentence visual prompt for an image that matches the post's theme.\n\nReturn your response as clean JSON only in this exact format, without any markdown code blocks or formatting:\n{\n  \"post\": \"your complete LinkedIn post content here\",\n  \"image_prompt\": \"a short, 1-2 sentence visual description for an image, under 30 words\"\n}\n\nDo NOT wrap the JSON in ```json ``` blocks. Return only the raw JSON object."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "ef36af7b-e832-4719-8abc-5bfd0c5cb42f",
+      "name": "LinkedIn Content & Image Creator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a professional content editor and social media strategist.\nPlease revise the following LinkedIn post based on my requested changes.\n\n---\n[Original Post]\n{{ $('Code in JavaScript').item.json.post }}\n---\n[My Requested Changes]\n{{ $json.data['Any Changes?'] }}\n---\nJust give the post only. Not pre or post commentary. Also do not post it as Markdown as Linkedin does not use the characters. ",
+        "options": {
+          "systemMessage": "="
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        448
+      ],
+      "id": "16b7b99d-329b-4e2c-92ed-6b68c6f9ce10",
+      "name": "LinkedIn Content Re draft Agent"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "AIzaSyAJ1VIAa4Ac6K4GwnSj-hkNcq3-9cEGpj8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"role\": \"user\",\n      \"parts\": [\n        {\n          \"text\": {{ JSON.stringify($json.image_prompt) }}\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"responseModalities\": [\n      \"TEXT\",\n      \"IMAGE\"\n    ]\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -144
+      ],
+      "id": "e01414b2-258c-4d82-b4c0-3253002a9a54",
+      "name": "Image creation"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn Content & Image Creator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LinkedIn Content & Image Creator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Image creation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response": {
+      "main": [
+        [
+          {
+            "node": "Confirmation Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmation Logic": {
+      "main": [
+        [
+          {
+            "node": "Create a post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LinkedIn Content Re draft Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LinkedIn Content Re draft Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn Content & Image Creator": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn Content Re draft Agent": {
+      "main": [
+        [
+          {
+            "node": "Create a post1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image creation": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1cf7352c-7add-40c6-afed-94385c3f4e53",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a39925a189fc4958777cfbc2ee952f96a625e56b8dde120f89d58a7cdacf694a"
+  },
+  "id": "ABncEhtBoG1ceNyP",
+  "tags": []
+}

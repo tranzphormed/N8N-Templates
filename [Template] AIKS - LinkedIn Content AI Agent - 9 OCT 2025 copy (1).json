@@ -1,0 +1,143 @@
+{
+  "name": "[Template] AIKS - LinkedIn Content AI Agent - 9 OCT 2025 copy",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -16,
+        288
+      ],
+      "id": "9ec3a687-5ae4-4e6e-90d5-113cae82dbb7",
+      "name": "When chat message received",
+      "webhookId": "9c6be12f-a2cd-40c2-b3a2-a764dc10a661"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are an Expert LinkedIn Content Creator Agent. Do not post the idea of LinkedIn post as is by the user. Instead make it a crisp content with hook line followed by agitate line and then few short crips lines and call to action. \nProvide the post back to the user. If the use approves it, then you can use the LinkedIn tool to make the post. "
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        192,
+        288
+      ],
+      "id": "799ca9dd-a214-48de-9292-ccc8396f6186",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        64,
+        496
+      ],
+      "id": "2dda11a0-0f5a-4ea7-93d5-d51f42db3343",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GoWq98iSJnh7bIWs",
+          "name": "AS DSM Public Google Gemini(PaLM) Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "person": "larOQJjAFl",
+        "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Text', ``, 'string') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.linkedInTool",
+      "typeVersion": 1,
+      "position": [
+        448,
+        496
+      ],
+      "id": "67770a13-18db-4367-a1eb-186034037a63",
+      "name": "Create a post in LinkedIn",
+      "credentials": {
+        "linkedInOAuth2Api": {
+          "id": "Zzgm1f3YUEX8DZRz",
+          "name": "AS- Linkedin API - Nov2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        496
+      ],
+      "id": "49103a95-8b15-4276-83f4-f35cbcdf525c",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a post in LinkedIn": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "dda4b351-ce34-4af9-b540-c011b92e69a7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a39925a189fc4958777cfbc2ee952f96a625e56b8dde120f89d58a7cdacf694a"
+  },
+  "id": "Mt0c0nmTwjNAXIXD",
+  "tags": []
+}

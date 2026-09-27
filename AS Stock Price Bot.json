@@ -1,0 +1,210 @@
+{
+  "name": "AS Stock Price Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d3c37c3f-b01c-42ba-9cae-3cba6baabd1f",
+      "name": "Telegram Trigger",
+      "webhookId": "bc0410b6-0350-4063-b66f-0fe851ac7771",
+      "credentials": {
+        "telegramApi": {
+          "id": "KtVmBgpGAbTPBjnI",
+          "name": "AS DSM Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $node[\"Telegram Trigger\"].json.message.chat.id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1056,
+        0
+      ],
+      "id": "e11ad83b-8d30-44cb-8131-b2bc934bb600",
+      "name": "Telegram",
+      "webhookId": "1b56e55e-c6dd-4791-a464-d48d1fb87156",
+      "credentials": {
+        "telegramApi": {
+          "id": "KtVmBgpGAbTPBjnI",
+          "name": "AS DSM Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get stock data from Details Fetcher (connected upstream)\nconst stock = $node[\"Details Fetcher\"].json;\n\n// Get AI output (correct key is 'output', not messages[0].content)\nconst aiOutput = $json.output || 'No AI analysis returned.';\n\n// Build stock summary\nconst summary =\n  `📊 *Stock Summary:*\\n` +\n  `• Company: ${stock.name} (${stock.symbol})\\n` +\n  `• Price: $${stock.price}\\n` +\n  `• Change: $${stock.change} (${parseFloat(stock.changesPercentage).toFixed(2)}%)\\n` +\n  `• P/E Ratio: ${stock.pe}\\n` +\n  `• EPS: $${stock.eps}\\n` +\n  `• Market Cap: $${(stock.marketCap / 1e9).toFixed(2)}B\\n` +\n  `• Earnings Date: ${new Date(stock.earningsAnnouncement).toDateString()}\\n\\n`;\n\n// Final message\nconst message = summary + `🧠 *AI Analysis & Recommendation:*\\n` + aiOutput;\n\nreturn [{ json: { message } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "b0a04140-6e92-4edc-8685-c040da7e382e",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{(() => {\n  const s = $json;\n  return `Here’s the latest stock data for analysis:\n\n- Company: ${s.name}\n- Symbol: ${s.symbol}\n- Current Price: $${s.price}\n- Change: $${s.change} (${parseFloat(s.changesPercentage).toFixed(2)}%)\n- Daily Range: $${s.dayLow} – $${s.dayHigh}\n- 52-Week Range: $${s.yearLow} – $${s.yearHigh}\n- Market Cap: $${(s.marketCap / 1e9).toFixed(2)}B\n- 50-Day Avg Price: $${s.priceAvg50}\n- 200-Day Avg Price: $${s.priceAvg200}\n- P/E Ratio: ${s.pe}\n- EPS: $${s.eps}\n- Volume: ${s.volume.toLocaleString()} (Avg: ${s.avgVolume.toLocaleString()})\n- Exchange: ${s.exchange}\n- Previous Close: $${s.previousClose}\n- Earnings Date: ${new Date(s.earningsAnnouncement).toDateString()}\n\nPlease analyze this and provide a brief recommendation based on valuation, price momentum, and timing (e.g., upcoming earnings). Conclude with a summary like: \"Consider holding\", \"Watch for breakout\", or \"Wait for correction\".`;\n})()}}\n",
+        "options": {
+          "systemMessage": "You are a professional financial analyst. Analyze provided stock data and offer actionable insights and recommendations. Keep it concise, avoid financial disclaimers, and write in a clear tone for non-experts. Directly start with the analysis\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        560,
+        0
+      ],
+      "id": "b8d16589-ea11-48b6-8fad-6ef3c41bd417",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        528,
+        208
+      ],
+      "id": "290ab9e7-5905-46fd-ac7b-39a3808ad96f",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GoWq98iSJnh7bIWs",
+          "name": "AS DSM Public Google Gemini(PaLM) Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://financialmodelingprep.com/api/v3/search?query={{ $json.message.text }}&limit=1&exchange=NASDAQ&apikey=aJOzFoLHb93ASYmNRheLWjFS5mzJeKbJ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        192,
+        0
+      ],
+      "id": "7818b68a-874b-470c-8063-3fdf54e82be0",
+      "name": "Ticker Fetcher"
+    },
+    {
+      "parameters": {
+        "url": "=https://financialmodelingprep.com/api/v3/quote/{{$json[\"symbol\"]}}?apikey=aJOzFoLHb93ASYmNRheLWjFS5mzJeKbJ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        0
+      ],
+      "id": "1c4be53c-e259-4624-9473-f7b75e901ab4",
+      "name": "Details Fetcher"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Ticker Fetcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ticker Fetcher": {
+      "main": [
+        [
+          {
+            "node": "Details Fetcher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Details Fetcher": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a928ae52-980b-43ce-96bb-c6f3ae726b45",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a39925a189fc4958777cfbc2ee952f96a625e56b8dde120f89d58a7cdacf694a"
+  },
+  "id": "dcxj29i75s9iQ5rm",
+  "tags": []
+}

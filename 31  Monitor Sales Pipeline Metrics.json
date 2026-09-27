@@ -1,0 +1,388 @@
+{
+  "name": "31  Monitor Sales Pipeline Metrics",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "cf62cb3b-0a5e-4113-9003-9416c16156f9",
+      "name": "⚡ Trigger: Start CRM Scraper",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        1440,
+        1056
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7a1b9454-dbc2-4805-899b-268a0cfc2cdf",
+              "name": "URL",
+              "type": "string",
+              "value": "https://jsonplaceholder.typicode.com/users"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3d016a67-a558-44df-8bc8-cce9fd8f85d2",
+      "name": "🔗 Set Source URL (CRM/JSONPlaceholder)",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1632,
+        1056
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a data analyst connected to Bright Data MCP scraping tool.\n\nScrape CRM-like sales data from this public API:\n{{ $json.URL }}\n\nTreat each user as a sales lead. For each entry, extract and simulate the following fields:\n\n{\n\"leadId\": <use id>,\n\"rep\": <use name>,\n\"stage\": <use username as deal stage>,\n\"value\": <convert address.zipcode to number and use as deal value>,\n\"status\": <use company.name to randomly assign status as \"open\", \"won\", or \"lost\">\n}\n\nThen:\n\nCalculate total number of leads\n\nTotal value of pipeline\n\nCount of leads in each stage\n\nCount of deals by status: open, won, lost\n\nIdentify top 3 reps based on simulated deal value",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "a3d0ad02-6208-4815-b117-b71bc19fe17b",
+      "name": "🤖 Monitor Sales Pipeline (CRM AI Agent)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        1920,
+        1056
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "id": "763165e8-9bb3-4ba2-a1bd-312a23c1e5d6",
+      "name": "🧠 AI Brain ",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        1808,
+        1312
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {},
+      "id": "c8ed9bc6-0059-4ab0-acde-f437f9210daa",
+      "name": "🌐 Bright Data MCP",
+      "type": "n8n-nodes-mcp.mcpClientTool",
+      "position": [
+        1952,
+        1312
+      ],
+      "typeVersion": 1,
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "return (() => {\nconst result = [];\n\nconst data = items[0].json.output;\n\n// 1. Total Leads\nresult.push({\n\"Metric Type\": \"Summary\",\n\"Label\": \"Total Leads\",\n\"Value\": data.totalLeads\n});\n\n// 2. Total Pipeline Value\nresult.push({\n\"Metric Type\": \"Summary\",\n\"Label\": \"Total Value\",\n\"Value\": data.totalPipelineValue\n});\n\n// 3. Status Breakdown\nfor (const status in data.statusBreakdown) {\nresult.push({\n\"Metric Type\": \"Status Count\",\n\"Label\": status,\n\"Value\": data.statusBreakdown[status]\n});\n}\n\n// 4. Stage Breakdown\nfor (const stage in data.stageBreakdown) {\nresult.push({\n\"Metric Type\": \"Stage Count\",\n\"Label\": stage,\n\"Value\": data.stageBreakdown[stage]\n});\n}\n\n// 5. Top Reps\nfor (const rep of data.topReps) {\nresult.push({\n\"Metric Type\": \"Top Reps\",\n\"Label\": rep.rep,\n\"Value\": rep.totalValue\n});\n}\n\nreturn result.map(r => ({ json: r }));\n})();"
+      },
+      "id": "52f7008c-1c02-4a02-845d-d6fce73e98fd",
+      "name": "🧩 Split Metrics for Sheet Rows",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2320,
+        1056
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1D8VmSbOUEf1jQWQ-_BaHVV_HOdb_d5DIyXzRSMlU5xs",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D8VmSbOUEf1jQWQ-_BaHVV_HOdb_d5DIyXzRSMlU5xs/edit?usp=drivesdk",
+          "cachedResultName": "Monitor Sales Pipeline Metrics"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1D8VmSbOUEf1jQWQ-_BaHVV_HOdb_d5DIyXzRSMlU5xs/edit#gid=0",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "value": {
+            "Label": "={{ $json.Label }}",
+            "Value": "={{ $json.Value }}",
+            "Metric Type": "={{ $json['Metric Type'] }}"
+          },
+          "schema": [
+            {
+              "id": "Metric Type",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "displayName": "Metric Type",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Label",
+              "type": "string",
+              "display": true,
+              "required": false,
+              "displayName": "Label",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Value",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "required": false,
+              "displayName": "Value",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "9403c3bf-581b-4f4b-ac0d-e4f06c417291",
+      "name": "📊 Store CRM Insights (Google Sheet)",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        2512,
+        1056
+      ],
+      "typeVersion": 4.6
+    },
+    {
+      "parameters": {
+        "content": "# 🚀 Smart CRM Scraper & Pipeline Health Analyzer (n8n + Bright Data + Google Sheets)\n\nThis automation workflow is perfect for sales ops, marketers, analysts, or even founders who want to:\n\n* 📥 Scrape sales pipeline data from CRM dashboards\n* 📊 Get insights into reps, leads, and statuses\n* 📁 Store it all in Google Sheets automatically — no copy/paste, no coding\n\nLet’s break this into 3 simple sections 👇\n\n---\n\n🔷 SECTION 1: Start & Set Target\n🧩 Combines these nodes:\n\n* ⚡ Trigger: Start CRM Scraper\n* 🔗 Set Source URL (CRM/JSONPlaceholder)\n\n📌 What Happens Here?\nThis section is where your automation begins. You:\n\n1. Manually run the workflow by clicking ▶️ “Execute Workflow”\n2. Define the website or CRM source you want to scrape\n\nExample:\n\n* You paste a mock CRM URL (e.g. [https://jsonplaceholder.typicode.com](https://jsonplaceholder.typicode.com)) — but in a real scenario, it could be a Bright Data-accessible CRM dashboard.\n\n✨ Benefits for Beginners:\n✅ No coding — just click + paste a URL\n✅ Easily swap out URLs for different CRM dashboards\n✅ Full control over when scraping starts\n\n🎯 Icons Summary:\n⚡ Manual Start | 🔗 Source URL Setup\n\n💡 Real-World Use:\nReplace the URL with a live CRM performance dashboard hosted inside Bright Data’s mobile proxy network.\n\n---\n\n🤖 SECTION 2: AI Agent — Scrape + Analyze\n🧩 Combines:\n\n* 🤖 Monitor Sales Pipeline (CRM AI Agent)\n\n  * 🧠 AI Brain (CRM Query Generator)\n  * 🌐 Bright Data MCP (scrape\\_as\\_markdown)\n  * 🧾 Clean JSON Parser (Pipeline Metrics)\n\n📌 What Happens Here?\n\nThis is the “thinking” part of the workflow.\n\n1. 🧠 AI Brain: OpenAI understands the task. It generates instructions like:\n    “Scrape rep names, stages, leads, health from this CRM dashboard as markdown.”\n\n2. 🌐 Bright Data Tool: The MCP tool accesses the page invisibly (like a phone browser) and extracts pipeline data using its scrape\\_as\\_markdown tool.\n\n3. 🧾 Structured Output Parser: Converts the scraped messy text into a structured JSON format like this:\n\n```json\n[\n  {\n    \"rep\": \"Alice\",\n    \"leads\": 22,\n    \"stage\": \"Proposal\",\n    \"status\": \"At Risk\"\n  },\n  ...\n]\n```\n\n✨ Benefits for Beginners:\n✅ Zero scraping code\n✅ Handles login-blocked or bot-protected CRMs via mobile proxies\n✅ Clean data format — easy to use in Sheets or dashboards\n\n🎯 Icons Summary:\n🧠 OpenAI Logic | 🌐 Bright Data Scraper | 🧾 JSON Cleaner\n\n💡 Real-World Use:\nScrape weekly CRM dashboards from tools like HubSpot, Pipedrive, Salesforce (if routed via Bright Data), and turn them into structured performance data.\n\n---\n\n🟨 SECTION 3: Format & Store to Google Sheets\n🧩 Combines:\n\n* 🧩 Split Metrics for Sheet Rows\n* 📊 Store CRM Insights (Google Sheet)\n\n📌 What Happens Here?\n\n1. 🧩 Split JSON: This node breaks the final structured output into individual items (one per sales rep), so each one becomes a row in your spreadsheet.\n\n2. 📊 Google Sheet Node: Adds each row into a connected Google Sheet — storing columns like:\n\n| rep   | leads | stage     | status  |\n| ----- | ----- | --------- | ------- |\n| Alice | 22    | Proposal  | At Risk |\n| Bob   | 17    | Qualified | Healthy |\n\n✨ Benefits for Beginners:\n✅ Saves all CRM data automatically — no manual data entry\n✅ Compatible with Google Data Studio / Looker / Excel\n✅ Great for sharing with managers or teams\n\n🎯 Icons Summary:\n🧩 JSON Splitter | 📊 Sheet Writer\n\n💡 Real-World Use:\nUse it for live pipeline visibility. Sync Sheets with dashboards or reporting tools, or use for daily monitoring via automations.\n\n---\n\n📦 Final Summary Table\n\n| Step       | Node Name                                 | Purpose                                      |\n| ---------- | ----------------------------------------- | -------------------------------------------- |\n| 1️⃣ Input  | ⚡ Trigger: Start CRM Scraper              | Manually trigger the workflow                |\n|            | 🔗 Set Source URL (CRM/JSONPlaceholder)   | Define where to scrape the CRM data from     |\n| 2️⃣ Agent  | 🤖 Monitor Sales Pipeline (CRM AI Agent)  | Smart agent to analyze CRM                   |\n|            | 🧠 AI Brain (CRM Query Generator)         | Creates scrape instructions                  |\n|            | 🌐 Bright Data MCP (scrape\\_as\\_markdown) | Executes scrape via MCP mobile network       |\n|            | 🧾 Clean JSON Parser (Pipeline Metrics)   | Converts scrape results into structured data |\n| 3️⃣ Output | 🧩 Split Metrics for Sheet Rows           | Breaks each record into its own row          |\n|            | 📊 Store CRM Insights (Google Sheet)      | Saves data into Google Sheet row-by-row      |\n\n",
+        "height": 2700,
+        "width": 1300,
+        "color": 4
+      },
+      "id": "3c7b506b-7acc-4d0e-b6df-8a4af2923e62",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -112,
+        352
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "🤖 SECTION 2: AI Agent — Scrape + Analyze\n🧩 Combines:\n\n* 🤖 Monitor Sales Pipeline (CRM AI Agent)\n\n  * 🧠 AI Brain (CRM Query Generator)\n  * 🌐 Bright Data MCP (scrape\\_as\\_markdown)\n  * 🧾 Clean JSON Parser (Pipeline Metrics)\n\n📌 What Happens Here?\n\nThis is the “thinking” part of the workflow.\n\n1. 🧠 AI Brain: OpenAI understands the task. It generates instructions like:\n    “Scrape rep names, stages, leads, health from this CRM dashboard as markdown.”\n\n2. 🌐 Bright Data Tool: The MCP tool accesses the page invisibly (like a phone browser) and extracts pipeline data using its scrape\\_as\\_markdown tool.\n\n3. 🧾 Structured Output Parser: Converts the scraped messy text into a structured JSON format like this:\n\n```json\n[\n  {\n    \"rep\": \"Alice\",\n    \"leads\": 22,\n    \"stage\": \"Proposal\",\n    \"status\": \"At Risk\"\n  },\n  ...\n]\n```\n\n✨ Benefits for Beginners:\n✅ Zero scraping code\n✅ Handles login-blocked or bot-protected CRMs via mobile proxies\n✅ Clean data format — easy to use in Sheets or dashboards\n\n🎯 Icons Summary:\n🧠 OpenAI Logic | 🌐 Bright Data Scraper | 🧾 JSON Cleaner\n\n💡 Real-World Use:\nScrape weekly CRM dashboards from tools like HubSpot, Pipedrive, Salesforce (if routed via Bright Data), and turn them into structured performance data.\n\n",
+        "height": 1260,
+        "width": 420,
+        "color": 5
+      },
+      "id": "d117eb72-42d9-464f-a516-7165aafe10c6",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1808,
+        -16
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "🟨 SECTION 3: Format & Store to Google Sheets\n🧩 Combines:\n\n* 🧩 Split Metrics for Sheet Rows\n* 📊 Store CRM Insights (Google Sheet)\n\n📌 What Happens Here?\n\n1. 🧩 Split JSON: This node breaks the final structured output into individual items (one per sales rep), so each one becomes a row in your spreadsheet.\n\n2. 📊 Google Sheet Node: Adds each row into a connected Google Sheet — storing columns like:\n\n| rep   | leads | stage     | status  |\n| ----- | ----- | --------- | ------- |\n| Alice | 22    | Proposal  | At Risk |\n| Bob   | 17    | Qualified | Healthy |\n\n✨ Benefits for Beginners:\n✅ Saves all CRM data automatically — no manual data entry\n✅ Compatible with Google Data Studio / Looker / Excel\n✅ Great for sharing with managers or teams\n\n🎯 Icons Summary:\n🧩 JSON Splitter | 📊 Sheet Writer\n\n💡 Real-World Use:\nUse it for live pipeline visibility. Sync Sheets with dashboards or reporting tools, or use for daily monitoring via automations.\n\n",
+        "height": 900,
+        "width": 440,
+        "color": 6
+      },
+      "id": "92163530-2787-4a13-8b1a-5b11f14f16f4",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2256,
+        352
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "🔷 SECTION 1: Start & Set Target\n🧩 Combines these nodes:\n\n* ⚡ Trigger: Start CRM Scraper\n* 🔗 Set Source URL (CRM/JSONPlaceholder)\n\n📌 What Happens Here?\nThis section is where your automation begins. You:\n\n1. Manually run the workflow by clicking ▶️ “Execute Workflow”\n2. Define the website or CRM source you want to scrape\n\nExample:\n\n* You paste a mock CRM URL (e.g. [https://jsonplaceholder.typicode.com](https://jsonplaceholder.typicode.com)) — but in a real scenario, it could be a Bright Data-accessible CRM dashboard.\n\n✨ Benefits for Beginners:\n✅ No coding — just click + paste a URL\n✅ Easily swap out URLs for different CRM dashboards\n✅ Full control over when scraping starts\n\n🎯 Icons Summary:\n⚡ Manual Start | 🔗 Source URL Setup\n\n💡 Real-World Use:\nReplace the URL with a live CRM performance dashboard hosted inside Bright Data’s mobile proxy network.\n",
+        "height": 920,
+        "width": 400,
+        "color": 3
+      },
+      "id": "ed11f53f-5570-425f-b2a0-f6c68e813f11",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1392,
+        336
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## I’ll receive a tiny commission if you join Bright Data through this link—thanks for fueling more free content!\n\n### https://get.brightdata.com/1tndi4600b25",
+        "height": 240,
+        "width": 380,
+        "color": 7
+      },
+      "id": "b3686375-e214-47f9-b701-00eb06c14e51",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2752,
+        352
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "=======================================\n            WORKFLOW ASSISTANCE\n=======================================\nFor any questions or support, please contact:\n    Yaron@nofluff.online\n\nExplore more tips and tutorials here:\n   - YouTube: https://www.youtube.com/@YaronBeen/videos\n   - LinkedIn: https://www.linkedin.com/in/yaronbeen/\n=======================================\n",
+        "height": 320,
+        "width": 1300,
+        "color": 4
+      },
+      "id": "43036886-0d3f-449b-8902-12e83bbe9116",
+      "name": "Sticky Note9",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -112,
+        -16
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "4165aea1-06fa-4e78-bc5a-3cdb3f591528",
+      "name": "Auto-fixing Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+      "position": [
+        2096,
+        1312
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "id": "e4342fba-be67-43f0-a475-049e56771313",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        2032,
+        1536
+      ],
+      "typeVersion": 1.2
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\"totalLeads\": 10,\n\"totalPipelineValue\": 556281,\n\"statusBreakdown\": {\n\"open\": 3,\n\"won\": 4,\n\"lost\": 3\n},\n\"stageBreakdown\": {\n\"Bret\": 1,\n\"Antonette\": 1,\n\"Samantha\": 1,\n\"Karianne\": 1,\n\"Kamren\": 1,\n\"Leopoldo_Corkery\": 1,\n\"Elwyn.Skiles\": 1,\n\"Maxime_Nienow\": 1,\n\"Delphine\": 1,\n\"Moriah.Stanton\": 1\n},\n\"topReps\": [\n{\n\"rep\": \"Leanne Graham\",\n\"stage\": \"Bret\",\n\"totalValue\": 929983874\n},\n{\n\"rep\": \"Ervin Howell\",\n\"stage\": \"Antonette\",\n\"totalValue\": 905667771\n},\n{\n\"rep\": \"Clementine Bauch\",\n\"stage\": \"Samantha\",\n\"totalValue\": 595904157\n}\n]\n}"
+      },
+      "id": "588a9af5-8583-43b0-a6ae-3e710b6007a9",
+      "name": "🧾 Clean JSON Parser ",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        2208,
+        1536
+      ],
+      "typeVersion": 1.3
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "🧠 AI Brain ": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Auto-fixing Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🌐 Bright Data MCP": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "🧾 Clean JSON Parser ": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Auto-fixing Output Parser",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⚡ Trigger: Start CRM Scraper": {
+      "main": [
+        [
+          {
+            "node": "🔗 Set Source URL (CRM/JSONPlaceholder)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧩 Split Metrics for Sheet Rows": {
+      "main": [
+        [
+          {
+            "node": "📊 Store CRM Insights (Google Sheet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 Monitor Sales Pipeline (CRM AI Agent)": {
+      "main": [
+        [
+          {
+            "node": "🧩 Split Metrics for Sheet Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c845da99-bc38-46e5-9f07-d5811deb3e35",
+  "meta": {
+    "instanceId": "966c9717c649ff58138114ad4ec0792ba6c6dbbaefbc75a95d7e5ed34f041958"
+  },
+  "nodeGroups": [],
+  "id": "v88k7RchNng8KpK5",
+  "tags": []
+}

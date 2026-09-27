@@ -1,0 +1,571 @@
+{
+  "name": "AS DSM  Multi Agent Research Analyst",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        80,
+        80
+      ],
+      "id": "bc90c2cc-e824-4d34-ae7e-e99eec4be268",
+      "name": "When chat message received",
+      "webhookId": "106b99a2-38b1-435f-8e96-dbd182f6072f"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a research orchestrator AI.\n\nYour team consists of:\n- ResearchA: expert in India-specific data, news, and insights.\n- ResearchB: expert in international/global data and reports.\n\nBased on the user's question, your job is to:\n- Ask up to 2 clarifying questions (if needed).\n- Decide which researcher(s) are required:\n\nIf the topic is India-specific, use only ResearchA. If it's international, use only ResearchB.\n\nIf both regions are relevant, include both.\nOnly continue if you have enough clarity. Otherwise, ask the questions.\n\nYour response should be pure JSON with the following format:\n{\n  \"answer\": \"Either the clarifying questions OR your plan is ready. Keep it natural.\",\n  \"proceed\": \"Yes\" or \"No\",\n  \"researchA\": \"Instructions for India research, or leave empty if not needed\",\n  \"researchB\": \"Instructions for international research, or leave empty if not needed\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        304,
+        80
+      ],
+      "id": "15887988-5537-4e3f-9037-5df932d252b9",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        240,
+        304
+      ],
+      "id": "22f2491e-ee9e-417e-b428-01c12eea238a",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GoWq98iSJnh7bIWs",
+          "name": "AS DSM Public Google Gemini(PaLM) Api"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        304
+      ],
+      "id": "ff46d164-7007-4bb6-8d54-08787a078a45",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "content": "## System 1 : Orchestrator\n",
+        "height": 480,
+        "width": 680
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "723dad5d-7bd7-40db-8d23-858591284f37",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n\nfor (const item of items) {\n  let raw = item.output || item.json?.output || item;\n\n  if (!raw || typeof raw !== 'string') {\n    results.push({\n      json: {\n        answer: \"Failed to parse output.\",\n        proceed: \"No\",\n        researchA: \"\",\n        researchB: \"\"\n      }\n    });\n    continue;\n  }\n\n  let parsed = null;\n\n  try {\n    // Attempt direct parse\n    parsed = JSON.parse(raw);\n  } catch (e1) {\n    try {\n      // Try parsing from ```json code block\n      const codeBlockRegex = /```(?:json)?\\s*([\\s\\S]*?)\\s*```/g;\n      const matches = [...raw.matchAll(codeBlockRegex)];\n      for (const match of matches) {\n        try {\n          parsed = JSON.parse(match[1].trim());\n          break;\n        } catch (e2) {}\n      }\n\n      // Fallback: parse from within raw JSON-looking content\n      if (!parsed) {\n        const jsonStart = raw.indexOf('{');\n        const jsonEnd = raw.lastIndexOf('}');\n        if (jsonStart !== -1 && jsonEnd !== -1) {\n          parsed = JSON.parse(raw.substring(jsonStart, jsonEnd + 1));\n        }\n      }\n    } catch (e3) {}\n  }\n\n  // Handle double-encoded JSON\n  if (parsed && typeof parsed === 'string') {\n    try {\n      parsed = JSON.parse(parsed);\n    } catch (e) {}\n  }\n\n  const answer = parsed?.answer || parsed?.response || parsed?.reply || raw.trim();\n  const proceedValue = (parsed?.proceed || \"\").trim().toLowerCase() === \"yes\" ? \"Yes\" : \"No\";\n\n  results.push({\n    json: {\n      answer,\n      proceed: proceedValue,\n      researchA: parsed?.researchA || \"\",\n      researchB: parsed?.researchB || \"\"\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        192
+      ],
+      "id": "efc73ef2-2718-4188-b044-40f70fae7fb0",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fd52b1b4-f66b-48fb-89b5-4b344b2a87a4",
+              "leftValue": "={{ $json.proceed }}",
+              "rightValue": "No",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        944,
+        192
+      ],
+      "id": "ca024ee8-0609-4b29-9d47-78db98bb0254",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1024970a-e653-43b6-bc33-5c0a6af1e090",
+                    "leftValue": "={{ $json.researchA }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "53a9b7cd-6b1e-4c7a-8af0-3994384073bb",
+                    "leftValue": "={{ $json.researchB }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "allMatchingOutputs": true
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1168,
+        288
+      ],
+      "id": "be78931e-4c68-4e75-8aed-b79ee7885e4f",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "79ede039-851b-4133-8dc6-5150326f3513",
+              "name": "answer",
+              "value": "={{ $json.answer }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1168,
+        80
+      ],
+      "id": "b597b965-1444-4252-8775-ba4e6bf67bd4",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "content": "## System 2 : Decision Logic",
+        "height": 480,
+        "width": 720
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        704,
+        0
+      ],
+      "id": "8ea6915a-cd86-4792-a18c-8a2686cc87d2",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.researchA }}",
+        "options": {
+          "systemMessage": "You are ResearchA — an expert research AI specializing in gathering information from Indian sources.\n\nYou’ve been assigned the following research task:\n{{ $json[\"researchA\"] }}\n\nUse only Indian data sources, publications, news portals, government sites, or local case studies.\n\nRespond with:\n1. A detailed explanation of your findings\n2. A list of sources you consulted (with URLs if available)\n3. Insights that are specific to the Indian market or context\n\nStay objective, clear, and concise. Keep your tone professional and actionable."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        112
+      ],
+      "id": "1ff31450-7367-4628-b7c6-684126e6d8bd",
+      "name": "ResearchA"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.researchB }}",
+        "options": {
+          "systemMessage": "You are ResearchB — a global research AI focused on international and US-based insights.\n\nYou've been assigned this research task:\n{{ $json[\"researchB\"] }}\n\nUse trusted international sources: global news portals, cross-country reports, worldwide stats, US think tanks, and verified studies.\n\nRespond with:\n1. A detailed explanation of your findings\n2. A list of sources (with links)\n3. Key international takeaways or trends\n\nBe clear, objective, and globally aware in your tone."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        432
+      ],
+      "id": "a21766e9-170f-4dc2-a9b6-6ce0e3f90251",
+      "name": "RerearchB"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        288
+      ],
+      "id": "f1596d91-d0d0-4f29-a013-684af3c56b5c",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GoWq98iSJnh7bIWs",
+          "name": "AS DSM Public Google Gemini(PaLM) Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        592
+      ],
+      "id": "bb9c1b81-0caf-494b-99e7-448e22e57a93",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GoWq98iSJnh7bIWs",
+          "name": "AS DSM Public Google Gemini(PaLM) Api"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1984,
+        240
+      ],
+      "id": "1e407a03-29f1-47d5-8fb3-ccce003c8f36",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "options": {
+          "summarizationMethodAndPrompts": {
+            "values": {
+              "summarizationMethod": "stuff",
+              "prompt": "=Write a concise summary of the following:\n {{ $json.output }} "
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+      "typeVersion": 2.1,
+      "position": [
+        2208,
+        240
+      ],
+      "id": "ff39aa74-c3ad-4721-954a-9b6f1c6a1c1b",
+      "name": "Summarization Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2192,
+        448
+      ],
+      "id": "b8fbf12d-814f-46f4-a70c-c1ca0cfc3d78",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GoWq98iSJnh7bIWs",
+          "name": "AS DSM Public Google Gemini(PaLM) Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "87eb06f4-ab01-4acd-9498-7ae1c29b4763",
+              "name": "output.text",
+              "value": "={{ $json.output.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2592,
+        208
+      ],
+      "id": "c1bd4a14-e484-415c-a9af-f0208f257456",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "content": "## System 3 : Research & Respond",
+        "height": 720,
+        "width": 1440
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        0
+      ],
+      "id": "09f135b2-f4b7-4a0d-a833-babb60d7efb6",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "ResearchA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RerearchB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "ResearchA",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "RerearchB",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ResearchA": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RerearchB": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarization Chain": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "16060085-b826-4c47-bfbe-3d22b6657886",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a39925a189fc4958777cfbc2ee952f96a625e56b8dde120f89d58a7cdacf694a"
+  },
+  "id": "N551qAily5EvSaaH",
+  "tags": []
+}
